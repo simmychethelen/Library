@@ -18,6 +18,7 @@ filepath2=Path('C:\\Users\\simmy\\PycharmProjects\\pythonProject2\\member.csv')
 filepath3=Path('C:\\Users\\simmy\\PycharmProjects\\pythonProject2\\checkouts.csv')
 
 class Library:
+    #The bookid calculation
     def __init__(self,title):
         n = random.randint(1, 999)  # creating a unique bookid
         b = 'VI' + str(n)
@@ -25,6 +26,8 @@ class Library:
         self.title=title
         self.author=''
         self.status=''
+
+
     def addbook(self):
         frame3 = tkinter.LabelFrame(window, width=700, height=450, bg='PeachPuff4')
         frame3.grid(row=2, columnspan=2, sticky='nsew', padx=10)
@@ -481,61 +484,93 @@ def loginwin():
     check.grid(row=2,column=1)
 
 def savechk():
-    currentdate = datetime.now().date()#current date
-    duedate = currentdate + timedelta(weeks=1)#Adding one week to current date
+    #currentdate = datetime.now().date()#current date
+    #duedate = currentdate + timedelta(weeks=1)#Adding one week to current date
     nmid=[]
     id1=''
     ids=[]
+    bookrow=[]
     with open('chkout.txt','r') as cfile:
         for i in cfile:
             a=i.split()[0]
             nmid.append(a)
-    print(nmid)
     with open('chkout1.txt','r') as c1file:
         for i in c1file:
             id1=i.strip('\n')
             ids.append(id1)
-
-
-    fieldnames=['Memid','Mem name' ,'Due date','Bookid']
+    fieldnames=['Memid','Mem name' ,'Bookid']
     with open('checkouts.csv','a',newline='') as chkfile:
         chk1=DictWriter(chkfile,fieldnames=fieldnames)
         if chkfile.tell() == 0:  # Check if the file is empty
             chk1.writeheader()
         for i in range(len(ids)):
-            row1={'Memid':nmid[0],'Mem name':nmid[1],'Due date':duedate,'Bookid':ids[i]}
+            row1={'Memid':nmid[0],'Mem name':nmid[1],'Bookid':ids[i]}
             chk1.writerow(row1)
 
+    with open('book.csv','r',newline='') as abook:
+        reader=DictReader(abook)
+        bookrow = list(reader)
+    for bookid in ids:
+        for r1 in bookrow:
+            if r1['Bookid']==bookid:
+                r1['Status']='NA'
+    with open('book.csv', 'w', newline='') as abook:
+        fieldnames = bookrow[0].keys()  # Get the fieldnames from the first row
+        writer = csv.DictWriter(abook, fieldnames=fieldnames)
+        writer.writeheader()  # Write the header
+        writer.writerows(bookrow)  # Write all rows, including updated ones
     os.remove('chkout.txt')
     os.remove('chkout1.txt')
 
 
 def checkout():
-    id=''   # to store the bookid checked out
-    bid = []
-    nm=''
-    mid = ''    # to store the memberid checked out
     books=[]    # to store booktitle in list for option menu
-    rows=[]    # to store each row of books dictionary in list
     members=[]    # to store membernames in list for option menu
-
+    mid = ''  # to store the memberid checked out
+    nm = '' #to store membername
+    # and write the above 2 variables in chkout.txt file
+    id=''   # to store the bookid checked out
+    rows=[]    # to store each row of books dictionary in list
+    # These are the heading for the frame
     frame3 = tkinter.LabelFrame(window, width=800, height=450, bg='PeachPuff4')# frame 3
     frame3.grid(row=2, columnspan=2, sticky='nsew',padx=10)
     head=tkinter.Label(frame3,text='******Library Checkouts******',font=("times", 14, "bold"))
     head.grid(row=2,column=0,columnspan=3,sticky='nsew',pady=5)
+    # Opening the book.csv file and storing the book title in list called books
     with open('book.csv','r') as cbook:
         chk=DictReader(cbook)
         for book in chk:
             a=book['Book title']
             books.append(a)
+    # Opening the member.csv file and storing the member name in members list
     with open('member.csv', 'r', newline='') as memfile:
         member = DictReader(memfile)
         for m in member:
             l=m['Mem name']
             members.append(l)
+    # the dropdown method called for member name
+    def selected1(*args):
+        ch1=clicked1.get()
+        with open('member.csv', 'r',newline='') as mem1file:
+            m1=DictReader(mem1file)
+            for item in m1:
+                if item['Mem name']==str(ch1):
+                    mid=item['Memid']
+                    nm=item['Mem name']
+                    # storing the variables id and name in chkout.txt file
+                    with open('chkout.txt', 'a', newline='') as cfile:
+                        cfile.write(mid.strip() + '\n')
+                        cfile.write(nm.strip() + '\n')
+                elif item['Mem name']=='':
+                    messagebox.showerror(title='Error', message='Select Member name')
+        # displaying the selected member id
+        memberid1 = tkinter.Label(frame3, text=mid)
+        memberid1.grid(row=4, column=1, sticky='nsew')
+
+    # the dropdown method called for Book title
     def selected(*args):
         ch=clicked.get()
-
+        #Opening the book.csv and storing the data in memory
         with open('book.csv', 'r',newline='') as book1file:
             b1 = DictReader(book1file)
             rows = list(b1)  # Read all rows into memory
@@ -548,10 +583,12 @@ def checkout():
                 messagebox.showinfo(title='Book', message='Book is available')
                 ans=messagebox.askquestion('Checkout',"Do you want to checkout ?")
                 if ans=='yes':
-                    row['Status'] = 'NA'  # Change the Status field
-                    id=row['Bookid']
-                    bid.append(id)
+                    id=row['Bookid'] # storing the bookid in variable id
+                    bid=id
                     ans1 = messagebox.askquestion('Checkout', "Do you want to checkout more books ?")
+                    with open('chkout1.txt', 'a', newline='') as cfile:
+                        cfile.write(id.strip() + '\n')
+                    savecheckout.focus_set()
                     if ans1=='no':
                         break
                     else:
@@ -560,79 +597,59 @@ def checkout():
                 else:
                     id=''
                     break
+
+        # checking whether the book is not available
         if not bookfound:
             messagebox.showerror(title='Error', message='Book not available')
-            return
-                # Write the updated data back to the file, overwriting it
-        with open('book.csv', 'w') as csvfile:
-            fieldnames = ['Bookid', 'Book title', 'Author', 'Status']
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()  # Write the header
-            writer.writerows(rows)
-        with open('chkout1.txt','a',newline='') as cfile:
-            print('Hi')
-            cfile.write(id.strip()+'\n')
-        mementry.focus_set()
-    def selected1(*args):
-        ch1=clicked1.get()
-        with open('member.csv', 'r',newline='') as mem1file:
-            m1=DictReader(mem1file)
+            savecheckout.config(state="disabled")
+            chkoutexit.focus_set()
 
-            for item in m1:
-                if item['Mem name']==str(ch1):
-                    mid=item['Memid']
-                    nm=item['Mem name']
-                elif item['Mem name']=='':
-                    messagebox.showerror(title='Error', message='Select Member name')
-
-
-        with open('chkout.txt', 'a',newline='') as cfile:
-            cfile.write(mid.strip()+'\n')
-            cfile.write(nm.strip()+'\n')
-        memberid1 = tkinter.Label(frame3, text=mid)
-        memberid1.grid(row=5, column=1, sticky='nsew')
+    # calling all the buttons in frame 3 for checkouts
+    memlabel = tkinter.Label(frame3, text='Member Name', font=("times", 12, "bold"), fg='white', bg='LightPink4',relief="ridge")
+    memlabel.grid(row=3, column=0, sticky='nw')
+    clicked1 = tkinter.StringVar(frame3)
+    clicked1.set(members[0]) # calling the members list here
+    mementry = OptionMenu(frame3, clicked1, *members)
+    mementry.grid(row=3, column=1)
+    clicked1.trace_add("write", selected1)
 
     titlelabel=tkinter.Label(frame3,text='Title',font=("times", 12, "bold"),fg='white',bg='LightPink4',relief="ridge")
-    titlelabel.grid(row=3,column=0,sticky='nsew')
+    titlelabel.grid(row=5,column=0,sticky='nsew')
+    #dropdown button for book title
     clicked = tkinter.StringVar(frame3)
     clicked.set(books[0])
-    bookentry = OptionMenu(frame3, clicked,*books)
-    bookentry.grid(row=3, column=1)
+    bookentry = OptionMenu(frame3, clicked,*books)# calling the books list here
+    bookentry.grid(row=5, column=1)
     clicked.trace_add("write", selected)
-    memlabel=tkinter.Label(frame3,text='Member Name',font=("times", 12, "bold"),fg='white',bg='LightPink4',relief="ridge")
-    memlabel.grid(row=4,column=0,sticky='nw')
-    clicked1 = tkinter.StringVar(frame3)
-    clicked1.set(members[0])
-    mementry = OptionMenu(frame3, clicked1,*members)
-    mementry.grid(row=4, column=1)
-    clicked1.trace_add("write", selected1)
+    #this method is called in exit
+    def exiting():
+        if os.path.exists('chkout.txt'):
+            os.remove('chkout.txt')
+        frame3.destroy()
     memberid = tkinter.Label(frame3, text="Member Id",font=("times", 12, "bold"),fg='white',bg='LightPink4',relief="ridge")
-    memberid.grid(row=5, column=0, sticky='nsew')
+    memberid.grid(row=4, column=0, sticky='nsew')
     savecheckout = tkinter.Button(frame3, text='Save CheckOuts', command=savechk,font=("times", 12, "bold"),fg='white',bg='LightPink4',relief="raised",activebackground="saddle brown",activeforeground="yellow")
     savecheckout.grid(row=6, column=1, sticky='nsew')
-    chkoutexit=tkinter.Button(frame3,command=frame3.destroy,text='Exit',font=("times", 12, "bold"),fg='white',bg='LightPink4',relief="raised",activebackground="saddle brown",activeforeground="yellow")
+    chkoutexit=tkinter.Button(frame3,command=exiting,text='Exit',font=("times", 12, "bold"),fg='white',bg='LightPink4',relief="raised",activebackground="saddle brown",activeforeground="yellow")
     chkoutexit.grid(row=6,column=2,sticky='nsew')
 
 def returncheck():
+    #Checking whether there are entries in checkouts file
     with open('checkouts.csv','r') as file:
         c = len(file.readlines())
-    if c <= 2:
+    if c <1:
         messagebox.showerror(title='Error', message='No books are checked out')
-    elif c>=2:
+    elif c>=1:
         returns1()
 
 def returns1():
     frame3 = tkinter.LabelFrame(window, width=800, height=450, bg='PeachPuff4')# frame 3
     frame3.grid(row=2, columnspan=2, sticky='nsew',padx=10)
+    # heading for Returns
     head=tkinter.Label(frame3,text='******Library Returns******',font=("times", 14, "bold"))
     head.grid(row=2,column=0,columnspan=3,sticky='nsew',pady=5)
-    names=[]
-    bid = []
-    bid1=[]
-    mid=''
-    bnm=''
-    rows1=[]
-
+    names=[] #to store bookid for dropdown
+    # storing the bookid in names list for dropdown
     with open('checkouts.csv','r') as retfile:
         rows=DictReader(retfile)
         for row in rows:
@@ -641,22 +658,23 @@ def returns1():
 
     def saveret():
         os.replace('tempret.csv', 'checkouts.csv')  # replaces the original data file with the content of new csv file
-        messagebox.showerror(title='Success', message='Saved Returns')
+        os.remove('return.txt')
+        messagebox.showinfo(title='Success', message='Saved Returns')
 
-
+    #dropdown for bookid
     def selected(*args):
         ch=clicked.get()
-        print(ch)
         filefound=False
         with open('book.csv','r') as retfile:
             b1=csv.DictReader(retfile)
-            rows1=list(b1)
+            rows1=list(b1)  # Read all rows into memory
         for row in rows1:
             if row['Bookid'] ==ch and row['Status']=='NA':
                 filefound=True
                 bnm=row['Book title']
-
-                ans = messagebox.askquestion('Returns', "Do you want to return "+bnm+"?")
+                # storing the book title in a varible are calling in msgbox
+                ans = messagebox.askquestion('Returns',message="Do you want to return "+bnm+"?")
+                #changing the status into A
                 if ans=='yes':
                     row['Status']='A'
                 else:
@@ -664,6 +682,7 @@ def returns1():
         if not filefound:
             messagebox.showerror(title='Error', message='Book already returned')
             return
+        # writing the changed status into book.csv
         with open('book.csv', 'w') as csvfile:
             fieldnames = ['Bookid', 'Book title', 'Author', 'Status']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -671,25 +690,19 @@ def returns1():
             writer.writerows(rows1)
         with open('return.txt','w') as retfile:
             retfile.write(ch)
-
-        bid = ''
-        chkid = ''
-        a = []
         with open('return.txt', 'r') as retfile:
             bid = retfile.readline().strip()
         found=False
         with open('checkouts.csv', 'r', newline='') as chkfile, \
-            open('tempret.csv', mode='w') as copyfile:  # creating a csv file
+            open('tempret.csv', mode='w', newline='') as copyfile:  # creating a csv file
             chkid = csv.DictReader(chkfile)
             fieldnames = chkid.fieldnames
             writer = csv.DictWriter(copyfile, fieldnames)  # temp csv file with the same fields
             writer.writeheader()
             for item in chkid:
-
                 if item['Bookid'] == bid:
                     id = item['Memid']
                     nm = item['Mem name']
-                    dt = item['Due date']
                     bnm1 = tkinter.Label(frame3, text="Book Title ", font=("times", 12, "bold"), fg='white',
                                          bg='LightPink4', relief="ridge")
                     bnm1.grid(row=3, column=0, sticky='nsew')
@@ -699,10 +712,6 @@ def returns1():
                     memname.grid(row=4, column=0, sticky='nsew')
                     memname1=tkinter.Label(frame3,text=nm)
                     memname1.grid(row=4, column=1, sticky='nw')
-                    memdt = tkinter.Label(frame3, text="Due date ",font=("times", 12, "bold"),fg='white',bg='LightPink4',relief="ridge")
-                    memdt.grid(row=5, column=0, sticky='nsew')
-                    memdt1=tkinter.Label(frame3,text=dt)
-                    memdt1.grid(row=5, column=1, sticky='nw')
                     delbutton = tkinter.Button(frame3, text='Save Returns', command=saveret,font=("times", 12, "bold"),fg='white',bg='LightPink4',relief="raised",activebackground="saddle brown",activeforeground="yellow")
                     delbutton.grid(row=6, column=1, sticky='nsew')
                     retexit = tkinter.Button(frame3, command=frame3.destroy, text='Exit', font=("times", 12, "bold"),
@@ -725,7 +734,7 @@ def returns1():
     clicked.trace_add("write", selected)
 
 
-
+# The initial look of the Library site with buttons
 window=tkinter.Tk()
 window.title('Library')
 window.geometry('800x500+100+10')  #1000 and 700 are width and height, 100 and 10 are the left, right space and top
@@ -744,6 +753,8 @@ frame2.grid(row=1,columnspan=2,sticky='nsew',padx=10,pady=10)
 frame2.grid_propagate(0)
 
 library_instance = Library('')
+#This is creating an instance of the class Library with an empty string ('')
+#being passed as an argument to the constructor of the Library class.
 addbook=tkinter.Button(frame2,text='Add Book',font=("times", 14, "bold"),fg='white',bg='dark slate gray',relief="raised",activebackground="saddle brown",activeforeground="yellow",command=lambda:[loginwin(),library_instance.addbook()])
 addbook.grid(row=1,column=0,sticky='nsew', padx=5, pady=5)
 delbook=tkinter.Button(frame2,text='Delete Book',font=("times", 14, "bold"),fg='white',bg='dark slate gray',relief="raised",activebackground="saddle brown",activeforeground="yellow",command=lambda :[loginwin(),library_instance.delbook()])
@@ -756,6 +767,8 @@ title=tkinter.Button(frame2,text='By Title',font=("times", 14, "bold"),fg='white
 title.grid(row=2,column=2,sticky='nsew', padx=5, pady=5)
 
 member_instance=Member('')
+#This is creating an instance of the class Member with an empty string ('')
+#being passed as an argument to the constructor of the Member class.
 membership=tkinter.Label(frame2,text='Membership',font=("times", 14, "bold"),fg='white',bg='seashell4',relief="sunken",activebackground="darkgreen",activeforeground="yellow")
 membership.grid(row=3,column=0,sticky='nsew', padx=5, pady=5)
 addmember=tkinter.Button(frame2,text='Add',font=("times", 14, "bold"),fg='white',bg='salmon4',relief="raised",activebackground="darkgreen",activeforeground="yellow",command=member_instance.addmem)
@@ -763,7 +776,7 @@ addmember.grid(row=3,column=1,sticky='nsew', padx=5, pady=5)
 delmember=tkinter.Button(frame2,text='Delete',font=("times", 14, "bold"),fg='white',bg='salmon4',relief="raised",activebackground="darkgreen",activeforeground="yellow",command=member_instance.delmem)
 delmember.grid(row=3,column=2,sticky='nsew', padx=5, pady=5)
 
-
+# the checkout method is called here
 checkout=tkinter.Button(frame2,text='CheckOuts',font=("times", 14, "bold"),fg='white',bg='LightPink4',relief="raised",activebackground="darkgreen",activeforeground="yellow",command=checkout)
 checkout.grid(row=4,column=0,sticky='nsew', padx=5, pady=5)
 returns=tkinter.Button(frame2,text='Returns',font=("times", 14, "bold"),fg='white',bg='LightPink4',relief="raised",activebackground="darkgreen",activeforeground="yellow",command=returncheck)
