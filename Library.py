@@ -637,10 +637,10 @@ def returncheck():
     #Checking whether there are entries in checkouts file
     with open('checkouts.csv','r') as file:
         c = len(file.readlines())
-    if c <1:
-        messagebox.showerror(title='Error', message='No books are checked out')
-    elif c>=1:
-        returns1()
+        if c <2:
+            messagebox.showerror(title='Error', message='No books are checked out')
+        elif c>=2:
+            returns1()
 
 def returns1():
     frame3 = tkinter.LabelFrame(window, width=800, height=450, bg='PeachPuff4')# frame 3
